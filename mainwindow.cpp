@@ -2,6 +2,7 @@
 #include <QMessageBox>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QDate>
 
 // Constructor ismi sınıf adıyla aynı olmak zorunda
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
@@ -62,60 +63,75 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
     verileriYukle(); //eski
 }
 
-void MainWindow::veritabaniBaslat(){
+void MainWindow::veritabaniBaslat() {
     db = QSqlDatabase::addDatabase("QSQLITE");
-
     db.setDatabaseName("health_data.db");
 
-    if(!db.open()){
+    if (!db.open()) {
         bilgiCubugu->setText("Database Error: " + db.lastError().text());
         return;
     }
+
     QSqlQuery sorgu;
-    //BMI Geçmiş tablosu
+    // BMI Tablosu
     sorgu.exec("CREATE TABLE IF NOT EXISTS bmicalculations (id INTEGER PRIMARY KEY AUTOINCREMENT, weight REAL, height REAL, bmi REAL, status TEXT)");
 
-    // 2. Su Takip Tablosu (Sadece tek bir satır tutup onu güncelleyeceğiz)
-    sorgu.exec("CREATE TABLE IF NOT EXISTS water_tracker (id INTEGER PRIMARY KEY, amount INTEGER)");
-    sorgu.exec("INSERT OR IGNORE INTO water_tracker (id, amount) VALUES (1, 0)");
+    // YENİ SU TABLOSU: Her güne ait benzersiz bir tarih satırı tutar
+    sorgu.exec("CREATE TABLE IF NOT EXISTS water_tracker ("
+               "water_date TEXT PRIMARY KEY, "
+               "amount INTEGER)");
 
-    // 3. Spor Takip Tablosu (7 günün check durumunu 0 veya 1 olarak tutar)
+    // Spor Tablosu
     sorgu.exec("CREATE TABLE IF NOT EXISTS sports_tracker (day_id INTEGER PRIMARY KEY, checked INTEGER)");
     for(int i=0; i<7; i++) {
         sorgu.exec("INSERT OR IGNORE INTO sports_tracker (day_id, checked) VALUES (" + QString::number(i) + ", 0)");
     }
 }
 
-void MainWindow::verileriYukle() {
-    QSqlQuery sorgu;
 
-    // Su verisini yükle
-    if (sorgu.exec("SELECT amount FROM water_tracker WHERE id = 1") && sorgu.next()) {
+
+void MainWindow::verileriYukle() {
+    // Bugünün tarihini YYYY-MM-DD formatında alıyoruz (Örn: 2026-07-13)
+    QString bugun = QDate::currentDate().toString("yyyy-MM-dd");
+
+    QSqlQuery sorgu;
+    sorgu.prepare("SELECT amount FROM water_tracker WHERE water_date = :date");
+    sorgu.bindValue(":date", bugun);
+
+    if (sorgu.exec() && sorgu.next()) {
         toplamSu = sorgu.value(0).toInt();
-        suDurumEtiketi->setText("Water consumed today: " + QString::number(toplamSu) + " ml\nGoal: 2000 ml");
+    } else {
+        toplamSu = 0; // Eğer bugün daha önce hiç su içilmediyse 0'dan başla
     }
 
-    // Spor verisini yükle (Sinyalleri geçici olarak kapatıyoruz ki yüklerken fonksiyonlar tetiklenmesin)
+    suDurumEtiketi->setText("Water consumed today: " + QString::number(toplamSu) + " ml\nGoal: 2000 ml");
+
+    // Spor verisini yükleme kısmı (Aynen kalıyor)
     if (sorgu.exec("SELECT day_id, checked FROM sports_tracker ORDER BY day_id")) {
         while (sorgu.next()) {
             int dayId = sorgu.value(0).toInt();
             int isChecked = sorgu.value(1).toInt();
-
             gunKutulari[dayId]->blockSignals(true);
             gunKutulari[dayId]->setChecked(isChecked == 1);
             gunKutulari[dayId]->blockSignals(false);
         }
     }
-    // Durum çubuğunu ilk açılışta güncelleyelim
     int tamamlananGun = 0;
     for(int i=0; i<7; i++) if(gunKutulari[i]->isChecked()) tamamlananGun++;
     bilgiCubugu->setText("Welcome back! " + QString::number(tamamlananGun) + "/7 days of sports completed.");
 }
 void MainWindow::suKaydet() {
+    QString bugun = QDate::currentDate().toString("yyyy-MM-dd");
+
     QSqlQuery sorgu;
-    sorgu.prepare("UPDATE water_tracker SET amount = :amount WHERE id = 1");
+    // Tarih satırı varsa miktarını günceller, yoksa o tarihe özel yeni satır açar
+    sorgu.prepare("INSERT OR REPLACE INTO water_tracker (water_date, amount) VALUES (:date, :amount)");
+    sorgu.bindValue(":date", bugun);
     sorgu.bindValue(":amount", toplamSu);
-    sorgu.exec();
+
+    if (!sorgu.exec()) {
+        bilgiCubugu->setText("Water Save Error: " + sorgu.lastError().text());
+    }
 }
 
 void MainWindow::sporKaydet() {
@@ -174,7 +190,7 @@ void MainWindow::suEkle() {
 void MainWindow::suSifirla() {
     toplamSu = 0;
     suDurumEtiketi->setText("Water consumed today: 0 ml\nGoal: 2000 ml");
-    suKaydet();
+    suKaydet(); // Yukarıda düzelttiğimiz fonksiyonu çağırıyor
     bilgiCubugu->setText("Water tracker reset and saved.");
 }
 
