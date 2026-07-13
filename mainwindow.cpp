@@ -5,7 +5,7 @@
 
 // Constructor ismi sınıf adıyla aynı olmak zorunda
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
-    veritabaniBaslat();
+
     this->setWindowTitle("Health & Sport Tracker ");
     this->resize(400, 720);
 
@@ -58,7 +58,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
     connect(vkeButon, &QPushButton::clicked, this, &MainWindow::vkeHesapla);
     connect(suEkleButon, &QPushButton::clicked, this, &MainWindow::suEkle);
     connect(suSifirlaButon, &QPushButton::clicked, this, &MainWindow::suSifirla);
-
+    veritabaniBaslat();
+    verileriYukle(); //eski
 }
 
 void MainWindow::veritabaniBaslat(){
@@ -71,14 +72,61 @@ void MainWindow::veritabaniBaslat(){
         return;
     }
     QSqlQuery sorgu;
-    sorgu.exec("CREATE TABLE IF NOT EXISTS bmicalculations("
-               "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-               "weight REAL,"
-               "height REAL,"
-               "bmi REAL,"
-               "status TEXT)");
+    //BMI Geçmiş tablosu
+    sorgu.exec("CREATE TABLE IF NOT EXISTS bmicalculations (id INTEGER PRIMARY KEY AUTOINCREMENT, weight REAL, height REAL, bmi REAL, status TEXT)");
+
+    // 2. Su Takip Tablosu (Sadece tek bir satır tutup onu güncelleyeceğiz)
+    sorgu.exec("CREATE TABLE IF NOT EXISTS water_tracker (id INTEGER PRIMARY KEY, amount INTEGER)");
+    sorgu.exec("INSERT OR IGNORE INTO water_tracker (id, amount) VALUES (1, 0)");
+
+    // 3. Spor Takip Tablosu (7 günün check durumunu 0 veya 1 olarak tutar)
+    sorgu.exec("CREATE TABLE IF NOT EXISTS sports_tracker (day_id INTEGER PRIMARY KEY, checked INTEGER)");
+    for(int i=0; i<7; i++) {
+        sorgu.exec("INSERT OR IGNORE INTO sports_tracker (day_id, checked) VALUES (" + QString::number(i) + ", 0)");
+    }
 }
 
+void MainWindow::verileriYukle() {
+    QSqlQuery sorgu;
+
+    // Su verisini yükle
+    if (sorgu.exec("SELECT amount FROM water_tracker WHERE id = 1") && sorgu.next()) {
+        toplamSu = sorgu.value(0).toInt();
+        suDurumEtiketi->setText("Water consumed today: " + QString::number(toplamSu) + " ml\nGoal: 2000 ml");
+    }
+
+    // Spor verisini yükle (Sinyalleri geçici olarak kapatıyoruz ki yüklerken fonksiyonlar tetiklenmesin)
+    if (sorgu.exec("SELECT day_id, checked FROM sports_tracker ORDER BY day_id")) {
+        while (sorgu.next()) {
+            int dayId = sorgu.value(0).toInt();
+            int isChecked = sorgu.value(1).toInt();
+
+            gunKutulari[dayId]->blockSignals(true);
+            gunKutulari[dayId]->setChecked(isChecked == 1);
+            gunKutulari[dayId]->blockSignals(false);
+        }
+    }
+    // Durum çubuğunu ilk açılışta güncelleyelim
+    int tamamlananGun = 0;
+    for(int i=0; i<7; i++) if(gunKutulari[i]->isChecked()) tamamlananGun++;
+    bilgiCubugu->setText("Welcome back! " + QString::number(tamamlananGun) + "/7 days of sports completed.");
+}
+void MainWindow::suKaydet() {
+    QSqlQuery sorgu;
+    sorgu.prepare("UPDATE water_tracker SET amount = :amount WHERE id = 1");
+    sorgu.bindValue(":amount", toplamSu);
+    sorgu.exec();
+}
+
+void MainWindow::sporKaydet() {
+    QSqlQuery sorgu;
+    for (int i = 0; i < 7; ++i) {
+        sorgu.prepare("UPDATE sports_tracker SET checked = :checked WHERE day_id = :day_id");
+        sorgu.bindValue(":checked", gunKutulari[i]->isChecked() ? 1 : 0);
+        sorgu.bindValue(":day_id", i);
+        sorgu.exec();
+    }
+}
 void MainWindow::vkeHesapla() {
     QString kiloText = kiloGiris->text();
     QString boyText = boyGiris->text();
@@ -107,12 +155,8 @@ void MainWindow::vkeHesapla() {
     insertSorgu.bindValue(":status", durum);
 
     if (insertSorgu.exec()) {
-        bilgiCubugu->setText("BMI saved to SQLite successfully.");
-    } else {
-        bilgiCubugu->setText("SQL Error: " + insertSorgu.lastError().text());
+        bilgiCubugu->setText("BMI calculation tracked and saved.");
     }
-
-
 
     QMessageBox::information(this, "Your BMI Result", "BMI: " + QString::number(vke, 'f', 2) + "\nStatus: " + durum);
 }
@@ -130,7 +174,8 @@ void MainWindow::suEkle() {
 void MainWindow::suSifirla() {
     toplamSu = 0;
     suDurumEtiketi->setText("Water consumed today: 0 ml\nGoal: 2000 ml");
-    bilgiCubugu->setText("Water tracker has been reset.");
+    suKaydet();
+    bilgiCubugu->setText("Water tracker reset and saved.");
 }
 
 // Spor takip çizelgesi kontrol fonksiyonu
@@ -141,6 +186,7 @@ void MainWindow::sporDurumuGuncelle() {
             tamamlananGun++;
         }
     }
+    sporKaydet();
     bilgiCubugu->setText("Sports Tracker: " + QString::number(tamamlananGun) + " / 7 days completed.");
 
     if (tamamlananGun == 7) {

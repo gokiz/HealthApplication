@@ -27,6 +27,9 @@ private:
 
     QSqlDatabase db;
     void veritabaniBaslat();
+    void verileriYukle();
+    void suKaydet();
+    void sporKaydet();
 
 
     void vkeHesapla();
