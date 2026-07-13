@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Qt6'nın grafik arayüz (Widgets) modülünü dahil ediyoruz
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Sql)
 
 # Derlenecek dosyalarımızı listeliyoruz
 add_executable(HealthApplication
@@ -18,4 +18,4 @@ add_executable(HealthApplication
 )
 
 # Kütüphaneleri projeye bağlıyoruz
-target_link_libraries(HealthApplication PRIVATE Qt6::Core Qt6::Widgets)
+target_link_libraries(HealthApplication PRIVATE Qt6::Core Qt6::Widgets Qt6::Sql)

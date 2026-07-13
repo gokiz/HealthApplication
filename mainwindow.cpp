@@ -1,8 +1,11 @@
 #include "mainwindow.h" // Kendi header dosyanı çağırıyor
 #include <QMessageBox>
+#include <QSqlError>
+#include <QSqlQuery>
 
 // Constructor ismi sınıf adıyla aynı olmak zorunda
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
+    veritabaniBaslat();
     this->setWindowTitle("Health & Sport Tracker ");
     this->resize(400, 720);
 
@@ -58,24 +61,58 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
 
 }
 
+void MainWindow::veritabaniBaslat(){
+    db = QSqlDatabase::addDatabase("QSQLITE");
+
+    db.setDatabaseName("health_data.db");
+
+    if(!db.open()){
+        bilgiCubugu->setText("Database Error: " + db.lastError().text());
+        return;
+    }
+    QSqlQuery sorgu;
+    sorgu.exec("CREATE TABLE IF NOT EXISTS bmicalculations("
+               "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+               "weight REAL,"
+               "height REAL,"
+               "bmi REAL,"
+               "status TEXT)");
+}
+
 void MainWindow::vkeHesapla() {
     QString kiloText = kiloGiris->text();
     QString boyText = boyGiris->text();
 
     if (kiloText.isEmpty() || boyText.isEmpty()) {
         QMessageBox::warning(this, "Warning", "Fields cannot be left empty!");
-        bilgiCubugu->setText("Error: Missing input data!");
         return;
     }
-
-    double vke = kiloText.toDouble() / ((boyText.toDouble() / 100.0) * (boyText.toDouble() / 100.0));
-    bilgiCubugu->setText("Last BMI Calculation: " + QString::number(vke, 'f', 2));
+    double kilo = kiloText.toDouble();
+    double boy = boyText.toDouble() / 100.0;
+    double vke = kilo / (boy * boy);
 
     QString durum;
     if(vke < 18.5) durum = "Underweight";
     else if(vke >= 18.5 && vke < 25.0) durum = "Normal Weight";
     else if(vke >= 25.0 && vke < 30.0) durum = "Overweight";
     else durum = "Obese";
+
+    // --- SQLITE KAYIT ALANI ---
+    QSqlQuery insertSorgu;
+    insertSorgu.prepare("INSERT INTO bmicalculations (weight, height, bmi, status) "
+                        "VALUES (:weight, :height, :bmi, :status)");
+    insertSorgu.bindValue(":weight", kilo);
+    insertSorgu.bindValue(":height", boy * 100); // cm olarak kaydetmek için
+    insertSorgu.bindValue(":bmi", vke);
+    insertSorgu.bindValue(":status", durum);
+
+    if (insertSorgu.exec()) {
+        bilgiCubugu->setText("BMI saved to SQLite successfully.");
+    } else {
+        bilgiCubugu->setText("SQL Error: " + insertSorgu.lastError().text());
+    }
+
+
 
     QMessageBox::information(this, "Your BMI Result", "BMI: " + QString::number(vke, 'f', 2) + "\nStatus: " + durum);
 }

@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QCheckBox>
+#include <QSqlDatabase>
 
 // Sınıf adı projenle uyumlu olarak MainWindow yapıldı
 class MainWindow : public QMainWindow {
@@ -23,6 +24,9 @@ private:
 
     QCheckBox *gunKutulari[7];
     QLabel *bilgiCubugu;
+
+    QSqlDatabase db;
+    void veritabaniBaslat();
 
 
     void vkeHesapla();
