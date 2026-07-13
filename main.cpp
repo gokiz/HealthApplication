@@ -5,99 +5,95 @@
 #include <QLineEdit>
 #include <QMessageBox>
 
-int main(int argc, char *argv[])
-{
-    // Grafik arayüz olay döngüsünü başlatır
-    QApplication app(argc, argv);
+// --- YENİ ÖZELLİK: SAĞLIK UYGULAMASI SINIFI ---
+// Kodun daha düzenli olması ve büyümesi için her şeyi bir sınıf (class) içinde topluyoruz
+class SaglikUygulamasi : public QWidget {
+public:
+    SaglikUygulamasi(QWidget *parent = nullptr) : QWidget(parent) {
+        // Pencere ayarları
+        this->setWindowTitle("Sağlık Uygulaması - OOP Sürümü");
+        this->resize(400, 550);
 
-    // Temel boş bir pencere (Widget) nesnesi oluşturuyoruz
-    QWidget anaPencere;
-    anaPencere.setWindowTitle("Health Application- BMI Calculator");
-    anaPencere.resize(400, 520); // Genişlik: 400, Yükseklik: 300
+        // --- VKE Bölümü ---
+        QLabel *vkeBaslik = new QLabel("<b>VÜCUT KİTLE ENDEKSİ (VKE)</b>", this);
+        vkeBaslik->setGeometry(50, 20, 300, 30);
 
-    QLabel *vkeBaslik = new QLabel ("<b>BODY MASS INDEX (BMI)</b>");
-    vkeBaslik->setGeometry(50,20,300,30);
+        kiloGiris = new QLineEdit(this);
+        kiloGiris->setGeometry(160, 60, 150, 30);
+        kiloGiris->setPlaceholderText("Örn: 70");
 
+        boyGiris = new QLineEdit(this);
+        boyGiris->setGeometry(160, 110, 150, 30);
+        boyGiris->setPlaceholderText("Örn: 175");
 
-    QLabel *kiloEtiketi = new QLabel("Weight(kg): ", &anaPencere);
-    kiloEtiketi->setGeometry(50,60,100,30);
+        QPushButton *vkeButon = new QPushButton("VKE Hesapla", this);
+        vkeButon->setGeometry(160, 160, 150, 40);
 
+        // --- Su Takip Bölümü ---
+        QLabel *suBaslik = new QLabel("<b>GÜNLÜK SU TAKİPÇİSİ</b>", this);
+        suBaslik->setGeometry(50, 250, 300, 30);
 
-    QLineEdit *kiloGiris = new QLineEdit(&anaPencere);
-    kiloGiris->setGeometry(160,60,150,30);
-    kiloGiris->setPlaceholderText("Example: 70");
+        suDurumEtiketi = new QLabel("Bugün içilen su: 0 ml\nHedef: 2000 ml", this);
+        suDurumEtiketi->setGeometry(50, 290, 300, 50);
 
-    QLabel *boyEtiketi = new QLabel("Height: ", &anaPencere);
-    boyEtiketi->setGeometry(50,110,100,30);
+        QPushButton *suEkleButon = new QPushButton("+1 Bardak Ekle", this);
+        suEkleButon->setGeometry(100, 360, 200, 40);
 
-    QLineEdit *boyGiris = new QLineEdit(&anaPencere);
-    boyGiris->setGeometry(160,110,150,30);
-    boyGiris->setPlaceholderText("Example:175");
+        // --- YENİ GÖRSEL ÖZELLİK: BİLGİLENDİRME ÇUBUĞU ---
+        bilgiCubugu = new QLabel("Uygulama hazır. Veri girişi bekliyor...", this);
+        bilgiCubugu->setGeometry(10, 520, 380, 20);
+        bilgiCubugu->setStyleSheet("color: gray; font-size: 11px; border-top: 1px solid #ccc;");
 
-    QPushButton *button = new QPushButton("Calculate BMI", &anaPencere);
-    button->setGeometry(160, 180, 150, 40);
+        // Buton Bağlantıları (Sinyaller)
+        connect(vkeButon, &QPushButton::clicked, this, &SaglikUygulamasi::vkeHesapla);
+        connect(suEkleButon, &QPushButton::clicked, this, &SaglikUygulamasi::suEkle);
+    }
 
-    // Butona tıklandığında girilen kiloyu mesaj olarak gösterelim
-    QObject::connect(button, &QPushButton::clicked, &anaPencere, [kiloGiris, boyGiris, &anaPencere]() {
+private:
+    // Sınıf değişkenleri (State)
+    QLineEdit *kiloGiris;
+    QLineEdit *boyGiris;
+    QLabel *suDurumEtiketi;
+    QLabel *bilgiCubugu;
+    int toplamSu = 0;
+
+    // VKE Hesaplama Fonksiyonu
+    void vkeHesapla() {
         QString kiloText = kiloGiris->text();
         QString boyText = boyGiris->text();
 
-        if(kiloText.isEmpty() || boyText.isEmpty()) {
-            QMessageBox::warning(&anaPencere, "Warning", "Please fill in all the fields!");
+        if (kiloText.isEmpty() || boyText.isEmpty()) {
+            QMessageBox::warning(this, "Uyarı", "Alanlar boş bırakılamaz!");
+            bilgiCubugu->setText("Hata: Eksik veri girişi!");
             return;
         }
-        double kilo = kiloText.toDouble();
-        double boy = boyText.toDouble() / 100.0;
-        double bmi = kilo / (boy * boy);
 
-        QString durum;
-        if(bmi < 18.5) {
-            durum = "Weak";
-        } else if(bmi >= 18.5 && bmi < 25.0) {
-            durum = "Normal";
-        } else if(bmi >= 25.0 && bmi < 30.0) {
-            durum = "Overweight";
-        } else {
-            durum = "Obese";
+        double vke = kiloText.toDouble() / ((boyText.toDouble() / 100.0) * (boyText.toDouble() / 100.0));
+        bilgiCubugu->setText("Son Hesaplama VKE: " + QString::number(vke, 'f', 2));
+
+        QMessageBox::information(this, "Sonuç", "VKE: " + QString::number(vke, 'f', 2));
+    }
+
+    // Su Ekleme Fonksiyonu
+    void suEkle() {
+        toplamSu += 250;
+        suDurumEtiketi->setText("Bugün içilen su: " + QString::number(toplamSu) + " ml\nHedef: 2000 ml");
+        bilgiCubugu->setText("Su eklendi: +" + QString::number(toplamSu) + " ml");
+
+        if (toplamSu >= 2000) {
+            QMessageBox::information(this, "Tebrikler", "Su hedefine ulaşıldı!");
         }
+    }
+};
 
-        // Sonucu kullanıcıya gösteriyoruz (QString::number ile sayıyı virgülden sonra 2 basamakla sınırlandırdık)
-        QMessageBox::information(&anaPencere, "BMI Result",
-                                 "Body Mass Index: " + QString::number(bmi, 'f', 2) + "\nStatus: " + durum);
-    });
+// Ana fonksiyonumuz artık çok daha temiz!
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
 
-    QLabel *ayrac = new QLabel("-----------------------------------------------------------------");
-    ayrac->setGeometry(50,220,300,20);
-    ayrac->setStyleSheet("color: #718096;");
-
-    QLabel *suDurumEtiketi = new QLabel("The amount of water drunk today: 0 ml\nGoal: 2000ml", &anaPencere);
-    suDurumEtiketi->setGeometry(50,290,300,50);
-    suDurumEtiketi->setStyleSheet("font-size: 14px; font-weight:bold; color: #3182ce;");
-
-    QPushButton *suEkleButon = new QPushButton("Add one cup(250 ml)", &anaPencere);
-    suEkleButon->setGeometry(100,360,200,30);
-
-    QPushButton *suSifirlaButon = new QPushButton("Reset", &anaPencere);
-    suSifirlaButon->setGeometry(100, 415, 200, 30);
-
-    int *toplamSu = new int(0);
-    QObject::connect(suEkleButon, &QPushButton::clicked, &anaPencere, [toplamSu, suDurumEtiketi, &anaPencere]() {
-        *toplamSu += 250;
-        suDurumEtiketi->setText("Bugün içilen su: " + QString::number(*toplamSu) + " ml\nHedef: 2000 ml");
-
-        if(*toplamSu >= 2000) {
-            QMessageBox::information(&anaPencere, "Congratulations!", "You have reached the target. 🎉💧");
-        }
-    });
-
-    // Sıfırlama Buton Bağlantısı
-    QObject::connect(suSifirlaButon, &QPushButton::clicked, &anaPencere, [toplamSu, suDurumEtiketi]() {
-        *toplamSu = 0;
-        suDurumEtiketi->setText("The amount of water drunk today: 0 ml\nGoal: 2000 ml");
-    });
-
-    // Pencereyi ekranda gösterir
-    anaPencere.show();
+    // Sınıfımızdan bir nesne üreterek uygulamayı başlatıyoruz
+    SaglikUygulamasi uygulama;
+    uygulama.show();
 
     return app.exec();
 }
