@@ -13,7 +13,10 @@ int main(int argc, char *argv[])
     // Temel boş bir pencere (Widget) nesnesi oluşturuyoruz
     QWidget anaPencere;
     anaPencere.setWindowTitle("Health Application- BMI Calculator");
-    anaPencere.resize(400, 350); // Genişlik: 400, Yükseklik: 300
+    anaPencere.resize(400, 520); // Genişlik: 400, Yükseklik: 300
+
+    QLabel *vkeBaslik = new QLabel ("<b>BODY MASS INDEX (BMI)</b>");
+    vkeBaslik->setGeometry(50,20,300,30);
 
 
     QLabel *kiloEtiketi = new QLabel("Weight(kg): ", &anaPencere);
@@ -61,6 +64,36 @@ int main(int argc, char *argv[])
         // Sonucu kullanıcıya gösteriyoruz (QString::number ile sayıyı virgülden sonra 2 basamakla sınırlandırdık)
         QMessageBox::information(&anaPencere, "BMI Result",
                                  "Body Mass Index: " + QString::number(bmi, 'f', 2) + "\nStatus: " + durum);
+    });
+
+    QLabel *ayrac = new QLabel("-----------------------------------------------------------------");
+    ayrac->setGeometry(50,220,300,20);
+    ayrac->setStyleSheet("color: #718096;");
+
+    QLabel *suDurumEtiketi = new QLabel("The amount of water drunk today: 0 ml\nGoal: 2000ml", &anaPencere);
+    suDurumEtiketi->setGeometry(50,290,300,50);
+    suDurumEtiketi->setStyleSheet("font-size: 14px; font-weight:bold; color: #3182ce;");
+
+    QPushButton *suEkleButon = new QPushButton("Add one cup(250 ml)", &anaPencere);
+    suEkleButon->setGeometry(100,360,200,30);
+
+    QPushButton *suSifirlaButon = new QPushButton("Reset", &anaPencere);
+    suSifirlaButon->setGeometry(100, 415, 200, 30);
+
+    int *toplamSu = new int(0);
+    QObject::connect(suEkleButon, &QPushButton::clicked, &anaPencere, [toplamSu, suDurumEtiketi, &anaPencere]() {
+        *toplamSu += 250;
+        suDurumEtiketi->setText("Bugün içilen su: " + QString::number(*toplamSu) + " ml\nHedef: 2000 ml");
+
+        if(*toplamSu >= 2000) {
+            QMessageBox::information(&anaPencere, "Congratulations!", "You have reached the target. 🎉💧");
+        }
+    });
+
+    // Sıfırlama Buton Bağlantısı
+    QObject::connect(suSifirlaButon, &QPushButton::clicked, &anaPencere, [toplamSu, suDurumEtiketi]() {
+        *toplamSu = 0;
+        suDurumEtiketi->setText("The amount of water drunk today: 0 ml\nGoal: 2000 ml");
     });
 
     // Pencereyi ekranda gösterir
