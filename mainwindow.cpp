@@ -3,8 +3,8 @@
 
 // Constructor ismi sınıf adıyla aynı olmak zorunda
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
-    this->setWindowTitle("Health Tracker Application");
-    this->resize(400, 550);
+    this->setWindowTitle("Health & Sport Tracker ");
+    this->resize(400, 720);
 
     // BMI Tasarımı
     QLabel *vkeBaslik = new QLabel("<b>BODY MASS INDEX (BMI)</b>", this);
@@ -26,19 +26,36 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
     suBaslik->setGeometry(50, 250, 300, 30);
 
     suDurumEtiketi = new QLabel("Water consumed today: 0 ml\nGoal: 2000 ml", this);
-    suDurumEtiketi->setGeometry(50, 290, 300, 50);
+    suDurumEtiketi->setGeometry(50, 270, 300, 50);
 
     QPushButton *suEkleButon = new QPushButton("+1 Glass (250 ml)", this);
-    suEkleButon->setGeometry(100, 360, 200, 40);
+    suEkleButon->setGeometry(50, 330, 140, 40);
+    QPushButton *suSifirlaButon = new QPushButton("Reset Water", this);
+    suSifirlaButon->setGeometry(210, 330, 140, 40);
+
+    QLabel *sportBaslik = new QLabel("<b>7-DAY SPORTS TRACKER</b>",this);
+    sportBaslik->setGeometry(50,400,300,30);
+
+    QStringList gunler = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+    for (int i = 0; i < 7; ++i) {
+        gunKutulari[i] = new QCheckBox(gunler[i], this);
+        // Kutucukları yan yana 45'er piksel arayla diziyoruz
+        gunKutulari[i]->setGeometry(50 + (i * 45), 440, 45, 30);
+
+        // Kutucuklardan birine tıklandığında durumu güncelle
+        connect(gunKutulari[i], &QCheckBox::toggled, this, &MainWindow::sporDurumuGuncelle);
+    }
 
     // Status Bar
     bilgiCubugu = new QLabel("Application ready...", this);
-    bilgiCubugu->setGeometry(10, 520, 380, 20);
+    bilgiCubugu->setGeometry(10, 690, 380, 20);
     bilgiCubugu->setStyleSheet("color: gray; font-size: 11px; border-top: 1px solid #ccc;");
 
     // Bağlantılar
     connect(vkeButon, &QPushButton::clicked, this, &MainWindow::vkeHesapla);
     connect(suEkleButon, &QPushButton::clicked, this, &MainWindow::suEkle);
+    connect(suSifirlaButon, &QPushButton::clicked, this, &MainWindow::suSifirla);
+
 }
 
 void MainWindow::vkeHesapla() {
@@ -68,7 +85,28 @@ void MainWindow::suEkle() {
     suDurumEtiketi->setText("Water consumed today: " + QString::number(toplamSu) + " ml\nGoal: 2000 ml");
     bilgiCubugu->setText("Water added: +" + QString::number(toplamSu) + " ml");
 
-    if (toplamSu >= 2000) {
+    if (toplamSu == 2000) { //sadece ilk ulaştığında gösterir
         QMessageBox::information(this, "Congratulations!", "You have reached your daily water consumption goal! 🎉💧");
+    }
+}
+// Sıfırlama fonksiyonunun gövdesi
+void MainWindow::suSifirla() {
+    toplamSu = 0;
+    suDurumEtiketi->setText("Water consumed today: 0 ml\nGoal: 2000 ml");
+    bilgiCubugu->setText("Water tracker has been reset.");
+}
+
+// Spor takip çizelgesi kontrol fonksiyonu
+void MainWindow::sporDurumuGuncelle() {
+    int tamamlananGun = 0;
+    for (int i = 0; i < 7; ++i) {
+        if (gunKutulari[i]->isChecked()) {
+            tamamlananGun++;
+        }
+    }
+    bilgiCubugu->setText("Sports Tracker: " + QString::number(tamamlananGun) + " / 7 days completed.");
+
+    if (tamamlananGun == 7) {
+        QMessageBox::information(this, "Excellent!", "You completed your sports routine for the entire week! 🏃‍🔥");
     }
 }

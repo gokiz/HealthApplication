@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QLineEdit>
+#include <QCheckBox>
 
 // Sınıf adı projenle uyumlu olarak MainWindow yapıldı
 class MainWindow : public QMainWindow {
@@ -18,11 +19,16 @@ private:
     QLineEdit *kiloGiris;
     QLineEdit *boyGiris;
     QLabel *suDurumEtiketi;
-    QLabel *bilgiCubugu;
     int toplamSu;
+
+    QCheckBox *gunKutulari[7];
+    QLabel *bilgiCubugu;
+
 
     void vkeHesapla();
     void suEkle();
+    void suSifirla();
+    void sporDurumuGuncelle();
 };
 
 #endif // MAINWINDOW_H
