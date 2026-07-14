@@ -6,8 +6,10 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QCheckBox>
+#include <QSpinBox>
 #include <QSqlDatabase>
 #include <QCloseEvent>
+
 // Sınıf adı projenle uyumlu olarak MainWindow yapıldı
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -24,7 +26,10 @@ private:
     QLineEdit *boyGiris;
     QLabel *suDurumEtiketi;
     int toplamSu;
-    bool suHedefBildirildi = false;
+    bool suHedefBildirildi = false; // Aynı gün içinde tebrik mesajının tekrar tekrar çıkmasını engeller
+
+    QSpinBox *suHedefGirisi;
+    int suHedefi; // Kullanıcının belirlediği günlük su hedefi (ml), QSettings ile kalıcı
 
     QCheckBox *gunKutulari[7];
     QLabel *bilgiCubugu;
@@ -34,12 +39,14 @@ private:
     void verileriYukle();
     void suKaydet();
     void sporKaydet();
-
+    void sporHaftalikSifirlamaKontrol(); // Yeni ISO haftasına geçildiyse spor tablosunu sıfırlar
 
     void vkeHesapla();
     void suEkle();
     void suSifirla();
+    void suHedefiAyarla();
     void sporDurumuGuncelle();
+    void gecmisiGoster();
 };
 
 #endif // MAINWINDOW_H

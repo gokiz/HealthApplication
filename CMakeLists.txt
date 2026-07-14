@@ -6,16 +6,21 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Qt6'nın grafik arayüz (Widgets) modülünü dahil ediyoruz
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Sql)
+# Qt6 modülleri:
+#  - Widgets: arayüz
+#  - Sql: veritabanı (SQLite)
+#  - Charts: BMI geçmiş grafiği (Qt Maintenance Tool'da "Qt Charts" bileşeni
+#            kurulu olmalı; Linux'ta genelde qt6-charts-dev paketiyle gelir)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Sql Charts)
 
-# Derlenecek dosyalarımızı listeliyoruz
+# NOT: Proje saf C++ (Qt Designer .ui dosyası olmadan) yazıldığı için
+# mainWindow.ui referansı yok - böyle bir dosya olmadığından build hatası verirdi.
 add_executable(HealthApplication
     main.cpp
     mainwindow.h
     mainwindow.cpp
-    mainWindow.ui
+    historydialog.h
+    historydialog.cpp
 )
 
-# Kütüphaneleri projeye bağlıyoruz
-target_link_libraries(HealthApplication PRIVATE Qt6::Core Qt6::Widgets Qt6::Sql)
+target_link_libraries(HealthApplication PRIVATE Qt6::Core Qt6::Widgets Qt6::Sql Qt6::Charts)
