@@ -7,20 +7,24 @@
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QSqlDatabase>
-
+#include <QCloseEvent>
 // Sınıf adı projenle uyumlu olarak MainWindow yapıldı
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() = default;
+    ~MainWindow();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     QLineEdit *kiloGiris;
     QLineEdit *boyGiris;
     QLabel *suDurumEtiketi;
     int toplamSu;
+    bool suHedefBildirildi = false;
 
     QCheckBox *gunKutulari[7];
     QLabel *bilgiCubugu;

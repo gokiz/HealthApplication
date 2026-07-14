@@ -63,6 +63,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), toplamSu(0) {
     verileriYukle(); //eski
 }
 
+MainWindow::~MainWindow(){
+    if(db.isOpen()){
+        db.close();
+    }
+}
+void MainWindow::closeEvent(QCloseEvent *event){
+    suKaydet();
+    QMainWindow::closeEvent(event);
+}
+
 void MainWindow::veritabaniBaslat() {
     db = QSqlDatabase::addDatabase("QSQLITE");
     db.setDatabaseName("health_data.db");
@@ -83,8 +93,11 @@ void MainWindow::veritabaniBaslat() {
 
     // Spor Tablosu
     sorgu.exec("CREATE TABLE IF NOT EXISTS sports_tracker (day_id INTEGER PRIMARY KEY, checked INTEGER)");
-    for(int i=0; i<7; i++) {
-        sorgu.exec("INSERT OR IGNORE INTO sports_tracker (day_id, checked) VALUES (" + QString::number(i) + ", 0)");
+    for (int i = 0; i < 7; i++) {
+        QSqlQuery ekleSorgu;
+        ekleSorgu.prepare("INSERT OR IGNORE INTO sports_tracker (day_id, checked) VALUES (:day_id, 0)");
+        ekleSorgu.bindValue(":day_id", i);
+        ekleSorgu.exec();
     }
 }
 
@@ -104,6 +117,8 @@ void MainWindow::verileriYukle() {
         toplamSu = 0; // Eğer bugün daha önce hiç su içilmediyse 0'dan başla
     }
 
+    suHedefBildirildi = (toplamSu >= 2000);
+
     suDurumEtiketi->setText("Water consumed today: " + QString::number(toplamSu) + " ml\nGoal: 2000 ml");
 
     // Spor verisini yükleme kısmı (Aynen kalıyor)
@@ -111,9 +126,11 @@ void MainWindow::verileriYukle() {
         while (sorgu.next()) {
             int dayId = sorgu.value(0).toInt();
             int isChecked = sorgu.value(1).toInt();
-            gunKutulari[dayId]->blockSignals(true);
-            gunKutulari[dayId]->setChecked(isChecked == 1);
-            gunKutulari[dayId]->blockSignals(false);
+            if (dayId >= 0 && dayId < 7) {
+                gunKutulari[dayId]->blockSignals(true);
+                gunKutulari[dayId]->setChecked(isChecked == 1);
+                gunKutulari[dayId]->blockSignals(false);
+            }
         }
     }
     int tamamlananGun = 0;
@@ -151,9 +168,17 @@ void MainWindow::vkeHesapla() {
         QMessageBox::warning(this, "Warning", "Fields cannot be left empty!");
         return;
     }
-    double kilo = kiloText.toDouble();
-    double boy = boyText.toDouble() / 100.0;
-    double vke = kilo / (boy * boy);
+    bool kiloOk = false, boyOk = false;
+    double kilo = kiloText.toDouble(&kiloOk);
+    double boyCm = boyText.toDouble(&boyOk);
+
+    if(!kiloOk || !boyOk || kilo <= 0 || boyCm <= 0){
+        QMessageBox::warning(this, "Warning", "Please enter valid positive nummber for weight and height!");
+        return;
+    }
+
+    double boy = boyCm / 100.0;
+    double vke = kilo / ( boy * boy);
 
     QString durum;
     if(vke < 18.5) durum = "Underweight";
@@ -172,6 +197,9 @@ void MainWindow::vkeHesapla() {
 
     if (insertSorgu.exec()) {
         bilgiCubugu->setText("BMI calculation tracked and saved.");
+    } else {
+        bilgiCubugu->setText("BMI Save Error: " + insertSorgu.lastError().text());
+
     }
 
     QMessageBox::information(this, "Your BMI Result", "BMI: " + QString::number(vke, 'f', 2) + "\nStatus: " + durum);
@@ -182,6 +210,7 @@ void MainWindow::suEkle() {
     suDurumEtiketi->setText("Water consumed today: " + QString::number(toplamSu) + " ml\nGoal: 2000 ml");
     bilgiCubugu->setText("Water added: +" + QString::number(toplamSu) + " ml");
 
+    suKaydet();
     if (toplamSu == 2000) { //sadece ilk ulaştığında gösterir
         QMessageBox::information(this, "Congratulations!", "You have reached your daily water consumption goal! 🎉💧");
     }
@@ -189,6 +218,7 @@ void MainWindow::suEkle() {
 // Sıfırlama fonksiyonunun gövdesi
 void MainWindow::suSifirla() {
     toplamSu = 0;
+    suHedefBildirildi = false;
     suDurumEtiketi->setText("Water consumed today: 0 ml\nGoal: 2000 ml");
     suKaydet(); // Yukarıda düzelttiğimiz fonksiyonu çağırıyor
     bilgiCubugu->setText("Water tracker reset and saved.");
